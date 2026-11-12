@@ -154,7 +154,9 @@ def cmd_dry_run(tag):
 
     print(f"\n=== 2/3 将要执行的步骤（tag={tag}）===")
     channels = _channels()
-    print(f"  git tag {tag}")
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD", check=False).stdout.strip()
+    branch = branch if branch and branch != "HEAD" else "main"
+    print(f"  git tag -a {tag} -m \"MC-WW {tag}\"")
     for index, (channel, url) in enumerate(channels):
         token, username, env_name = _token_for(channel)
         # 演练输出里也要打码：终端可能被截图分享，令牌不该出现在任何日志里
@@ -165,7 +167,8 @@ def cmd_dry_run(tag):
             note = f"   ← 缺 {env_name}，这一步会跳过并降级到下一个通道"
         else:
             note = f"   ← 缺 {env_name}，最后一个通道也缺令牌，发布会失败"
-        print(f"  git push …<branch>            # 分支（让仓库先有内容）")
+        # 每个远端都要先推分支、再推 tag（不同仓库，不能只推一次）
+        print(f"  git push {shown} {branch}   # 分支，让远端仓库先有内容")
         print(f"  git push {shown} {tag}{note}")
     print("\n=== 3/3 没做的事 ===")
     print("  没有创建 tag、没有联网、没有上传任何东西。")

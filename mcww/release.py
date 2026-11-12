@@ -10,10 +10,13 @@
 
 发布通道的优先级是 **CNB 优先、GitHub 保底**，理由来自实测而不是偏好：
 
-* 同一份 46MB 代码树，CNB 浅克隆 5.5s，GitHub codeload 只有约 35KB/s；
-* 本机实测 GitHub 的 git 协议直接不通（``CONNECT tunnel failed, response 502``），
-  而 CNB 正常 —— 国内网络下 GitHub 经常是这种状态；
+* 同一份 46MB 代码树，CNB 浅克隆约 5.5s，GitHub codeload 只有约 35KB/s；
+* GitHub 的 git 协议在国内**能连但常要凭据/极慢**（``git ls-remote`` 报
+  ``could not read Username for 'https://github.com'``），下载体验明显不如 CNB；
 * 但 GitHub 在海外网络更可靠，所以它保留为**保底**而不是删除。
+
+两个通道都是**私有仓库**时都要令牌：CNB 用户名固定 ``cnb``、密码为访问令牌；
+GitHub 用 PAT。令牌只从环境变量读（见 ``tools/publish.py``），不入库。
 
 地址只存一份：``mcww/release.json``。「关于页链接」和「pyappify.yml 的
 ``git_url``」都从这里派生，避免出现「界面显示我的仓库、更新却去拉别人仓库」。
