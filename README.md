@@ -178,6 +178,22 @@ $env:MC_WW_GITHUB_TOKEN = "你的 GitHub PAT"        # 需要 repo 权限
 ```
 
 令牌**只从环境变量读**，脚本不写 remote、不写 credential 文件、输出时打码。
+
+### 两个通道各自的流水线
+
+推送 tag 之后，两条通道会各自跑自己那份流水线，产出**同名同结构**的源码包
+（`MC-WW-<tag>.zip`），所以用户从哪边下都一样：
+
+| 通道 | 流水线文件 | 触发 | 做的事 |
+|---|---|---|---|
+| CNB | `.cnb.yml` | `push` / PR / `tag_push` | 分支：只跑检查；tag：校验 → `git archive` → `git:release` → 挂附件 |
+| GitHub | `.github/workflows/` | `push` / PR / `v*` tag | 同上，`check.yml` 只跑检查，`release.yml` 发版 |
+
+两边都先建 Release 再挂附件 —— 顺序不能颠倒，附件必须挂在已存在的 Release 上。
+`gh release create` 重跑时会走 `upload --clobber`，所以流水线可以安全重跑。
+
+`tools/check_release.py` 会核对这两份流水线是否存在、是否覆盖 tag 发版；少一边
+（比如只有 CNB），GitHub 就只是能推代码、产不出 Release，保底通道名存实亡。
 CNB 访问令牌在「个人设置 → 访问令牌」生成（需 `repo-contents` 读写权限），
 GitHub 在 Settings → Developer settings → Personal access tokens 生成。
 
@@ -194,6 +210,7 @@ MC-WW/
 ├── upstream_config.py    # 【同步】上游原始 config.py
 ├── LICENSE.txt           # 【受保护】AGPL-3.0 许可证全文
 ├── .cnb.yml              # CNB 流水线（push 检查 / tag 发版）
+├── .github/workflows/    # GitHub Actions（check.yml 只检查，release.yml 发版）
 ├── mcww/                 # 【受保护】MC-WW 自有代码
 │   ├── branding.py       #   品牌改写、运行时补丁、翻译回退
 │   ├── release.py        #   双通道地址、优先级、可达性探测

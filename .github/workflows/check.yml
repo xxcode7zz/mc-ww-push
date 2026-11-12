@@ -1,0 +1,28 @@
+name: 发布配置检查
+
+# 与 .cnb.yml 的 main/push 阶段等价：每次 push 和 PR 都跑一遍静态检查。
+# 这里**不带** --tag，所以「发布地址还没填」只算警告，不阻断提交。
+#
+# `branches: ["**"]` 明确只匹配分支，tag 推送由 release.yml 负责，
+# 避免同一个 tag 触发两套流水线。
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # check_release.py 是纯静态的（AST 读源码 + 检查文件存在），
+      # 不需要装 PySide6 / ok 框架，所以这里不跑 pip install。
+      - name: 发布配置检查
+        run: python tools/check_release.py

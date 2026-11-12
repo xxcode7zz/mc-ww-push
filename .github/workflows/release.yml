@@ -1,0 +1,90 @@
+name: 发版
+
+# 与 .cnb.yml 的 `$: tag_push` 阶段等价，是 GitHub 保底通道的发布流水线。
+# 推 v* tag 时：校验配置 → 打包源码 → 建 Release → 挂附件。
+#
+# 顺序不能颠倒的本质原因和 CNB 一样：Release 必须先存在，附件才有地方挂。
+# 附件名与 CNB 保持一致（MC-WW-<tag>.zip），这样「关于页 → Download」
+# 无论落到哪个通道，用户下到的都是同一种包。
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write     # 建 Release + 传附件需要写权限
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # git archive 要完整 HEAD 与 tag 信息
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 发版档检查：与 push 档同一份脚本，只是带上 --tag，
+      # 于是「发布地址未配置 / profile 绑定不对」从警告升为硬错误。
+      - name: 校验 tag 与发布配置
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "发版 tag：$TAG"
+          python tools/check_release.py --tag "$TAG"
+
+      # 用 git archive 而不是手搓 zip：只收被 git 跟踪的文件，
+      # backups/ cache/ configs/ logs/ 这些运行时产物天然被排除。
+      - name: 打包源码归档
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          git archive --format=zip \
+            --prefix="MC-WW-${VERSION}/" \
+            -o "MC-WW-${TAG}.zip" HEAD
+          ls -lh "MC-WW-${TAG}.zip"
+          # 体积异常通常意味着有大文件混进了仓库，早失败比用户下到 200MB 好
+          SIZE_MB=$(( $(stat -c%s "MC-WW-${TAG}.zip") / 1000000 ))
+          echo "包体积：${SIZE_MB} MB"
+          if [ "$SIZE_MB" -gt 80 ]; then
+            echo "::error::包体积 ${SIZE_MB}MB 超过 80MB，检查是否有大文件被提交"
+            exit 1
+          fi
+
+      # gh CLI 在所有 GitHub 托管 runner 上都预装，比第三方 action 少一层依赖。
+      # 先建 Release 再挂附件；--generate-notes 让 GitHub 自动按 commit 生成说明，
+      # --notes 的内容会插在自动生成说明之前。
+      #
+      # 幂等：流水线重跑时 Release 已存在，此时走 upload --clobber 覆盖附件，
+      # 否则 `create` 会因「release already exists」直接失败。
+      - name: 创建 Release 并上传附件
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          NOTES=$(cat <<'EOF'
+          源码与安装包见下方附件。客户端会通过 git tag 拉取本版本。
+
+          国内用户优先从 CNB 下载；本仓库是保底通道。
+          EOF
+          )
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在，改为覆盖附件"
+            gh release upload "$TAG" "MC-WW-${TAG}.zip" --clobber
+          else
+            gh release create "$TAG" "MC-WW-${TAG}.zip" \
+              --title "MC-WW ${TAG}" \
+              --generate-notes \
+              --notes "$NOTES" \
+              --verify-tag
+          fi
+
+      - name: 输出下载信息
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "发布页：${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+          echo "下载直链：${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${TAG}/MC-WW-${TAG}.zip"

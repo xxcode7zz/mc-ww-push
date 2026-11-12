@@ -4,6 +4,7 @@
 
 * ``tools/publish.py``     —— 打 tag 之前跑一遍，不合格就不打；
 * CNB 流水线 ``.cnb.yml``  —— push 时跑，拦住"带病提交"；
+* GitHub Actions ``.github/workflows/`` —— 与 CNB 等价的保底通道；
 * 手工排查                —— ``python tools/check_release.py``。
 
 **只做静态检查，不 import 应用本体**（不碰 PySide6、不初始化 ok 框架），
@@ -216,6 +217,47 @@ def check_icons():
         error("pyappify.yml 没有指定 icon —— 安装器会用默认图标。")
 
 
+def check_pipelines(required=True):
+    """两个通道各自要有流水线，且都要覆盖 tag 发版。
+
+    CNB 用 ``.cnb.yml``，GitHub 用 ``.github/workflows/``。少一边，那条通道就
+    只能推代码、产不出 Release —— 保底通道会名存实亡。
+    """
+    cnb = ROOT / ".cnb.yml"
+    if not cnb.exists():
+        message = "缺少 .cnb.yml —— CNB 主通道推 tag 后不会打包发版。"
+        if required:
+            error(message)
+        else:
+            warn(message + "（普通 push 不阻断，发版时会拦）")
+    else:
+        text = _read(".cnb.yml")
+        if "tag_push" not in text:
+            error(".cnb.yml 没有 tag_push 事件 —— 推 tag 不会触发发版。")
+        if "git:release" not in text:
+            error(".cnb.yml 的发版流水线没有 git:release —— 产不出 Release。")
+
+    workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
+    if not workflows:
+        message = "缺少 .github/workflows/ —— GitHub 保底通道推 tag 后不会打包发版。"
+        if required:
+            error(message)
+        else:
+            warn(message + "（普通 push 不阻断，发版时会拦）")
+        return
+
+    release_flow = None
+    for path in workflows:
+        text = path.read_text(encoding="utf-8")
+        if "tags:" in text and "gh release create" in text:
+            release_flow = path.name
+            break
+    if release_flow is None:
+        error("GitHub workflows 里没有「tag 触发 + gh release create」的发版流水线。")
+    else:
+        note(f"GitHub 发版流水线：.github/workflows/{release_flow}")
+
+
 def check_license():
     """AGPL-3.0 衍生作品必须带许可证全文，且同步引擎把它列为受保护路径。"""
     path = ROOT / "LICENSE.txt"
@@ -343,6 +385,7 @@ def run_checks(tag=""):
     check_branding_static()
     check_config_title()
     check_icons()
+    check_pipelines(required=releasing)
     check_license()
     check_version(tag)
     check_version_consistency(tag)
