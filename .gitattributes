@@ -1,0 +1,43 @@
+# 换行符归一化
+# ----------------------------------------------------------------
+# 仓库里统一存 LF。CI（CNB 的容器 / GitHub 的 ubuntu runner）都是 Linux，
+# 脚本里一旦混入 CRLF，bash 会把 \r 当成命令的一部分而报错
+# （典型报错：`$'\r': command not found`），而且极难看出原因。
+# 所以在 .gitattributes 里把这些文件钉死成 LF，不依赖各人本机的 autocrlf。
+
+* text=auto eol=lf
+
+# CI 脚本与流水线配置：必须是 LF
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.sh    text eol=lf
+.cnb.yml text eol=lf
+.gitattributes text eol=lf
+.gitignore     text eol=lf
+
+# Python 源码：LF
+*.py    text eol=lf
+
+# 文档：LF
+*.md    text eol=lf
+LICENSE.txt text eol=lf
+
+# Windows 上要双击运行的脚本保留 CRLF（cmd.exe 对 LF 的批处理支持不稳）
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# 二进制文件：不要做任何换行转换
+*.png   binary
+*.ico   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.onnx  binary
+*.zip   binary
+*.exe   binary
+*.dll   binary
+*.pyd   binary
+*.so    binary
+*.mo    binary
