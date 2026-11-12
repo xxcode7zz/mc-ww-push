@@ -194,6 +194,31 @@ $env:MC_WW_GITHUB_TOKEN = "你的 GitHub PAT"        # 需要 repo 权限
 
 `tools/check_release.py` 会核对这两份流水线是否存在、是否覆盖 tag 发版；少一边
 （比如只有 CNB），GitHub 就只是能推代码、产不出 Release，保底通道名存实亡。
+
+### 首次上传到 GitHub
+
+仓库刚建、还没有远端时，用这个脚本推第一版。它和 `publish.py` 的分工是：
+`push_github.py` 管「代码上去」，`publish.py` 管「发一个版本」。
+
+```powershell
+# 演练：只打印要执行的步骤
+.\.venv\Scripts\python.exe tools\push_github.py https://github.com/你的用户名/mc-ww --dry-run
+
+# 真推（会提示粘贴令牌，输入时不回显、不进 shell 历史）
+.\.venv\Scripts\python.exe tools\push_github.py https://github.com/你的用户名/mc-ww
+```
+
+三点设计约束，都是为了避免令牌泄漏：
+
+- 令牌**不进命令行参数**。走 `http.extraheader` 经环境变量注入，进程列表里看不到。
+- 令牌**不落盘**。不写 `.git/config`、不写 `.git-credentials`、不写 `.netrc`；
+  `origin` 只存干净地址，之后交给 Git Credential Manager 管。
+- 输出**一律打码**，包括 `mask()` 覆盖到的 git 报错。
+
+GitHub 令牌需要 `repo` 权限（经典 PAT）或 `Contents: Read and write`（细粒度）。
+
+要连 tag 一起推（推完 GitHub Actions 会自动发版）加 `--tags`。
+
 CNB 访问令牌在「个人设置 → 访问令牌」生成（需 `repo-contents` 读写权限），
 GitHub 在 Settings → Developer settings → Personal access tokens 生成。
 
@@ -223,6 +248,7 @@ MC-WW/
 ├── tools/                # 【受保护】维护脚本
 │   ├── set_repo.py       #   写入双通道地址（同步 json 与 pyappify.yml）
 │   ├── check_release.py  #   发布前检查（静态，可在裸 python 镜像跑）
+│   ├── push_github.py    #   首次上传 GitHub（令牌不进 argv、不落盘）
 │   └── publish.py        #   打 tag 并推送（CNB 优先、GitHub 保底）
 ├── src/                  # 【同步】上游任务与角色代码
 ├── ok/                   # 【同步】ok-script 框架
