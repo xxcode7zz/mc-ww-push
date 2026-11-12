@@ -1,0 +1,143 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MC-WW\n"
+"Language: zh_TW\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Character Code"
+msgstr "角色代碼"
+
+msgid "Open Upstream Sync"
+msgstr "開啟上游同步"
+
+msgid "Please open the Upstream Sync page manually."
+msgstr "請手動開啟「上游同步」頁面。"
+
+msgid ""
+"Try syncing upstream first. If it still fails, open an issue with the log "
+"attached."
+msgstr "請先嘗試同步上游程式碼；如仍失敗，請附上日誌提交問題。"
+
+msgid ""
+"The character code editor from {app}'s upstream is missing, most likely "
+"because upstream renamed or moved it."
+msgstr "未找到 {app} 上游的角色代碼編輯器，可能是上游改名或移動了該模組。"
+
+msgid "Upstream Sync"
+msgstr "上游同步"
+
+msgid "Check for Updates"
+msgstr "檢查更新"
+
+msgid "Sync Now"
+msgstr "立即同步"
+
+msgid "Version Status"
+msgstr "版本狀態"
+
+msgid "Sync Settings"
+msgstr "同步設定"
+
+msgid "Upstream Sources"
+msgstr "上游來源"
+
+msgid "Syncing upstream code, please wait…"
+msgstr "正在同步上游程式碼，請稍候…"
+
+msgid "Download → replace → verify. The window may freeze briefly."
+msgstr "下載 → 取代 → 校驗。期間視窗可能短暫卡頓。"
+
+msgid "Check upstream on startup"
+msgstr "啟動時檢查上游"
+
+msgid ""
+"Checks the upstream version quietly after startup and shows a hint when a "
+"newer version exists. It never changes code on its own."
+msgstr "啟動後在背景靜默檢查上游版本，發現新版本時給出提示；不會自行變更程式碼。"
+
+msgid ""
+"Syncing replaces upstream code only (src / ok / assets / i18n and so on). "
+"MC-WW branding and its own pages are never overwritten, and a failed check "
+"rolls everything back."
+msgstr ""
+"同步只取代上游程式碼（src / ok / assets / i18n 等），MC-WW 的品牌設定與自有頁面不會被覆寫；校驗失敗會自動回滾。"
+
+msgid "Not synced yet — currently running on the bundled baseline."
+msgstr "尚未同步過，目前執行的是內建基線版本。"
+
+msgid "Click \"Sync Now\" to pull the latest ok-ww code."
+msgstr "點擊「立即同步」取得最新的 ok-ww 程式碼。"
+
+msgid "Click \"Sync Now\" to update to it."
+msgstr "點擊「立即同步」升級至該版本。"
+
+msgid "Check finished"
+msgstr "檢查完成"
+
+msgid "Sync failed"
+msgstr "同步失敗"
+
+msgid "Local upstream version: {version}"
+msgstr "本地上游版本：{version}"
+
+msgid "Synced to upstream {version}"
+msgstr "已同步至上游 {version}"
+
+msgid "Updated paths: {paths}. Restart {app} to apply."
+msgstr "已更新：{paths}。請重新啟動 {app} 生效。"
+
+msgid "Sync finished — restart {app} to apply"
+msgstr "同步完成，請重新啟動 {app} 生效"
+
+msgid "Quit Now"
+msgstr "立即結束"
+
+msgid "Last sync: {time}"
+msgstr "上次同步：{time}"
+
+msgid "Source: {source}"
+msgstr "來源：{source}"
+
+msgid "New upstream version found: {version} (local {local})"
+msgstr "發現上游新版本：{version}（本地 {local}）"
+
+msgid "Already up to date: {version}"
+msgstr "已是最新版本：{version}"
+
+msgid "Sync failed: {error}"
+msgstr "同步失敗：{error}"
+
+msgid "none"
+msgstr "無"
+
+msgid "Check failed: {error}"
+msgstr "檢查失敗：{error}"
+
+msgid "Release Repository"
+msgstr "發布倉庫"
+
+msgid "primary"
+msgstr "優先"
+
+msgid "fallback"
+msgstr "保底"
+
+msgid ""
+"No release repository configured yet — the app runs locally, but packaging "
+"needs one. Run: python tools/set_repo.py --cnb <url> --github <url>"
+msgstr ""
+"尚未設定發布倉庫位址 —— 程式可本機執行，但封裝前必須設定。請執行：python tools/set_repo.py --cnb <CNB位址> "
+"--github <GitHub位址>"
+
+msgid ""
+"Only one channel is configured. Add the other one as a mirror: python "
+"tools/set_repo.py --cnb <url> --github <url>"
+msgstr ""
+"只設定了一個通道。建議再補一個作為鏡像：python tools/set_repo.py --cnb <CNB位址> --github "
+"<GitHub位址>"
+
+msgid "Releases"
+msgstr "發布頁"

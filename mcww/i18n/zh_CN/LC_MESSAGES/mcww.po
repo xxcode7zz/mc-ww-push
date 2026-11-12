@@ -1,0 +1,143 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MC-WW\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Character Code"
+msgstr "角色代码"
+
+msgid "Open Upstream Sync"
+msgstr "打开上游同步"
+
+msgid "Please open the Upstream Sync page manually."
+msgstr "请手动打开「上游同步」页面。"
+
+msgid ""
+"Try syncing upstream first. If it still fails, open an issue with the log "
+"attached."
+msgstr "请先尝试同步上游代码；如仍失败，请附上日志提交问题。"
+
+msgid ""
+"The character code editor from {app}'s upstream is missing, most likely "
+"because upstream renamed or moved it."
+msgstr "未找到 {app} 上游的角色代码编辑器，可能是上游改名或移动了该模块。"
+
+msgid "Upstream Sync"
+msgstr "上游同步"
+
+msgid "Check for Updates"
+msgstr "检查更新"
+
+msgid "Sync Now"
+msgstr "立即同步"
+
+msgid "Version Status"
+msgstr "版本状态"
+
+msgid "Sync Settings"
+msgstr "同步设置"
+
+msgid "Upstream Sources"
+msgstr "上游来源"
+
+msgid "Syncing upstream code, please wait…"
+msgstr "正在同步上游代码，请稍候…"
+
+msgid "Download → replace → verify. The window may freeze briefly."
+msgstr "下载 → 替换 → 校验。期间窗口可能短暂卡顿。"
+
+msgid "Check upstream on startup"
+msgstr "启动时检查上游"
+
+msgid ""
+"Checks the upstream version quietly after startup and shows a hint when a "
+"newer version exists. It never changes code on its own."
+msgstr "启动后在后台静默检查上游版本，发现新版本时给出提示；不会自行改动代码。"
+
+msgid ""
+"Syncing replaces upstream code only (src / ok / assets / i18n and so on). "
+"MC-WW branding and its own pages are never overwritten, and a failed check "
+"rolls everything back."
+msgstr ""
+"同步只替换上游代码（src / ok / assets / i18n 等），MC-WW 的品牌配置与自有页面不会被覆盖；校验失败会自动回滚。"
+
+msgid "Not synced yet — currently running on the bundled baseline."
+msgstr "尚未同步过，当前运行的是内置基线版本。"
+
+msgid "Click \"Sync Now\" to pull the latest ok-ww code."
+msgstr "点击「立即同步」拉取最新的 ok-ww 代码。"
+
+msgid "Click \"Sync Now\" to update to it."
+msgstr "点击「立即同步」升级到该版本。"
+
+msgid "Check finished"
+msgstr "检查完成"
+
+msgid "Sync failed"
+msgstr "同步失败"
+
+msgid "Local upstream version: {version}"
+msgstr "本地上游版本：{version}"
+
+msgid "Synced to upstream {version}"
+msgstr "已同步至上游 {version}"
+
+msgid "Updated paths: {paths}. Restart {app} to apply."
+msgstr "已更新：{paths}。请重启 {app} 生效。"
+
+msgid "Sync finished — restart {app} to apply"
+msgstr "同步完成，请重启 {app} 生效"
+
+msgid "Quit Now"
+msgstr "立即退出"
+
+msgid "Last sync: {time}"
+msgstr "上次同步：{time}"
+
+msgid "Source: {source}"
+msgstr "来源：{source}"
+
+msgid "New upstream version found: {version} (local {local})"
+msgstr "发现上游新版本：{version}（本地 {local}）"
+
+msgid "Already up to date: {version}"
+msgstr "已是最新版本：{version}"
+
+msgid "Sync failed: {error}"
+msgstr "同步失败：{error}"
+
+msgid "none"
+msgstr "无"
+
+msgid "Check failed: {error}"
+msgstr "检查失败：{error}"
+
+msgid "Release Repository"
+msgstr "发布仓库"
+
+msgid "primary"
+msgstr "优先"
+
+msgid "fallback"
+msgstr "保底"
+
+msgid ""
+"No release repository configured yet — the app runs locally, but packaging "
+"needs one. Run: python tools/set_repo.py --cnb <url> --github <url>"
+msgstr ""
+"尚未配置发布仓库地址 —— 程序可以本地运行，但打包前必须设置。请执行：python tools/set_repo.py --cnb <CNB地址> "
+"--github <GitHub地址>"
+
+msgid ""
+"Only one channel is configured. Add the other one as a mirror: python "
+"tools/set_repo.py --cnb <url> --github <url>"
+msgstr ""
+"只配置了一个通道。建议再补一个做镜像：python tools/set_repo.py --cnb <CNB地址> --github "
+"<GitHub地址>"
+
+msgid "Releases"
+msgstr "发布页"

@@ -1,0 +1,83 @@
+# CNB 流水线：MC-WW 的国内主通道
+# ----------------------------------------------------------------
+# 分工：CNB = 国内优先通道，GitHub = 保底（见 mcww/release.py 的 CHANNEL_ORDER）。
+#
+#   main          push          → 跑检查，不发布（拦住带病提交进主干）
+#   $（兜底分支）  tag_push      → 跑检查 → 打包 → 建 Release → 传附件
+#   任意分支       pull_request  → 只跑检查
+#
+# `$` 是「兜底分支」，匹配所有未单独声明的分支；已声明的 `main` 不会落进 `$`。
+# 推任何 tag 都会触发下面的发版流水线。
+#
+# 发版顺序不能颠倒：**tag 必须有对应的 release 才能挂附件**，所以先
+# `git:release` 建 Release，再用 `cnbcool/attachments` 传文件。
+# 附件插件是 job 级 `image` + `settings`，不是 docker.image + script。
+
+main:
+  push:
+    - name: "check-main"
+      stages:
+        - name: "发布配置检查"
+          script: python tools/check_release.py
+
+  pull_request:
+    - name: "check-pr"
+      stages:
+        - name: "发布配置检查"
+          script: python tools/check_release.py
+
+$:
+  tag_push:
+    - name: "release"
+      label:
+        type: RELEASE
+      stages:
+        - name: "校验 tag 与发布配置"
+          script: |
+            TAG="${CNB_BRANCH}"
+            echo "发版 tag：$TAG"
+            python tools/check_release.py --tag "$TAG"
+
+        - name: "打包源码归档"
+          script: |
+            TAG="${CNB_BRANCH}"
+            VERSION="${TAG#v}"
+            # 用 git archive 而不是手搓 zip：只收被 git 跟踪的文件，
+            # backups/ cache/ configs/ logs/ 这些运行时产物天然被排除。
+            # 也只归档本项目需要的目录，避免把 .workbuddy 之类带进去。
+            git archive --format=zip \
+              --prefix="MC-WW-${VERSION}/" \
+              -o "MC-WW-${TAG}.zip" HEAD
+            ls -lh "MC-WW-${TAG}.zip"
+            # 体积异常通常意味着有大文件混进了仓库，早失败比用户下到 200MB 好
+            SIZE_MB=$(( $(stat -c%s "MC-WW-${TAG}.zip") / 1000000 ))
+            echo "包体积：${SIZE_MB} MB"
+            if [ "$SIZE_MB" -gt 80 ]; then
+              echo "::error::包体积 ${SIZE_MB}MB 超过 80MB，检查是否有大文件被提交"
+              exit 1
+            fi
+
+        - name: "创建 Release"
+          type: git:release
+          options:
+            title: "MC-WW ${CNB_BRANCH}"
+            description: |
+              源码与安装包见下方附件。客户端会通过 git tag 拉取本版本。
+
+              国内用户优先从 CNB 下载；GitHub 镜像见仓库「关于页 → GitHub」。
+
+        - name: "上传 Release 附件"
+          image: cnbcool/attachments:latest
+          settings:
+            # tag 不传时，tag_push 事件会自动取 $CNB_BRANCH 对应的 release
+            attachments:
+              - "MC-WW-*.zip"
+          exports:
+            FILES: FILES
+
+        - name: "输出下载信息"
+          script: |
+            TAG="${CNB_BRANCH}"
+            echo "附件：$FILES"
+            echo "发布页：https://${CNB_WEB_HOST}/${CNB_REPO_SLUG}/-/releases/tag/${TAG}"
+            echo "下载直链：https://${CNB_WEB_HOST}/${CNB_REPO_SLUG}/-/releases/download/${TAG}/MC-WW-${TAG}.zip"

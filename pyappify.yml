@@ -1,0 +1,36 @@
+name: "MC-WW"
+uac: true
+icon: "icons/icon.png"
+website: "https://ok-script.com/ok-ww"
+keep_releases: 30
+
+# ----------------------------------------------------------------------------
+# git_url 由 tools/set_repo.py 生成，不要手改这一行 ——
+#   python tools/set_repo.py https://github.com/你的用户名/mc-ww-update.git
+#   python tools/set_repo.py https://cnb.cool/你的路径/mc-ww-update.git
+#   python tools/set_repo.py --check      # 打包前校验
+#
+# 这两个 git_url 是 **MC-WW 自己的发布仓库**，不是上游 ok-ww 的更新仓库。
+# 打包器会从 git_url 拉整个应用包覆盖安装 —— 如果填成 ok-ww 的仓库，
+# 打出来的安装包会变回纯 ok-ww（config.py / mcww/ / 图标全被替换）。
+#
+# 现在留空是**故意的**：仓库还没建，空值会让打包/更新明确报错，
+# 而不是静默指向一个不存在的仓库（旧的占位地址 github.com/ok-oldking/
+# mc-ww-update 实测 404）。填好之后 tools/set_repo.py 会自动写回这里。
+# ----------------------------------------------------------------------------
+profiles:
+  - name: "China"
+    git_url: ""
+    admin: true
+    main_script: "main.py"
+    requires_python: "3.12"
+    requirements: "requirements.txt"
+    use_pythonw: true
+    pip_args: "--no-deps"
+    show_add_defender: true
+    # PYTHONPATH: "your/default/path" # Optional, will be "" if missing
+
+  - name: "Global"
+    git_url: ""
+    main_script: "main.py"
+    requirements: "requirements.txt"

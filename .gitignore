@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------- Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# ---------------------------------------------------------------- MC-WW 运行时产物
+# 这些是**跑起来才会产生**的东西，绝不能进仓库：
+# 进仓库的话，每台机器都会把自己的日志/缓存/备份提交上去，仓库迅速膨胀。
+logs/
+**/logs/
+*.log
+*.log.*
+cache/
+backups/
+screenshots/
+ok_import/
+
+# 用户自己的配置与角色代码（configs/ 由程序生成，含用户按键与自定义角色）
+configs/
+mcww/sync_state.json
+mcww/ui_settings.json
+
+# 同步时自建的临时目录（异常退出时可能残留）
+mcww_sync_*/
+*.tmp
+
+# ---------------------------------------------------------------- 系统与编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
