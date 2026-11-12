@@ -97,8 +97,14 @@ MC-WW 与上游 ok-ww 的关系是**派生 + 同步**，不是一次性复制。
 
 ```powershell
 # 建议使用项目本地虚拟环境
+python -m venv .venv
+.\.venv\Scripts\pip.exe install -r requirements.txt
 .\.venv\Scripts\python.exe main.py
 ```
+
+> 本工作副本的虚拟环境建在工作区根目录（`MC-WW/` 的上一级），所以本文所有命令
+> 开头的 `.\.venv` 要写成 `..\.venv`。正常从仓库克隆下来时 `.venv` 就在项目根目录，
+> 照抄即可。
 
 ### 命令行参数
 
