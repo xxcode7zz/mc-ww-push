@@ -1,0 +1,127 @@
+name: 安装包
+
+# 产出可分发的 Windows 安装包，并挂到指定 Release 上。
+#
+# 为什么单独一个 workflow 而不并进 release.yml：
+#   release.yml 走 tag 触发、只做「源码归档」（git archive 出的 zip 是纯源码，
+#   别人要装得自己配 Python 环境）。安装包是另一件事 —— 要在 Windows runner
+#   上装 Python、装依赖、用 pyappify 编译出 setup.exe。两者产物不同、
+#   耗时差一个量级，混在一起会让每次 push tag 都变慢。
+#
+# 为什么必须在 windows-latest：
+#   pyappify 编译的是 Windows 的 tauri 启动器（.exe）。Linux runner 打不出来。
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要挂安装包的 Release tag（例如 v1.0.0）"
+        required: true
+        default: "v1.0.0"
+      profiles:
+        description: "打包的 profile（逗号分隔，留空=全部）"
+        required: false
+        default: ""
+
+concurrency:
+  group: installer-${{ github.event.inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write     # 上传 Release 附件需要
+
+env:
+  PYTHON_VERSION: "3.12"
+  PYTHONIOENCODING: "UTF-8"
+  PYTHONLEGACYWINDOWSSTDIO: "UTF-8"
+  PYAPPIFY_VERSION: "v1.2.7"   # 与上游一致，避免版本差异带来的行为分叉
+
+jobs:
+  build:
+    name: 构建安装包
+    runs-on: windows-latest
+
+    steps:
+      - name: 配置 runner
+        shell: pwsh
+        run: |
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          # 仓库里 .gitattributes 把 CI 脚本钉成 LF；这里再钉一次 git 的默认，
+          # 否则 checkout 出来的 .py 会带 CRLF，打包进 setup 后可能影响 hash 校验。
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: 检出源码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
+          fetch-depth: 0        # pyappify 要读 tag 与 commit 历史生成版本列表
+          persist-credentials: false
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      # 把 ok / pyappify 这类「随源码一起走」的包从 requirements 里摘掉，
+      # 并把 version 写进 config.py。上游打包也跑这一步，不能让安装包里的
+      # 依赖清单和源码目录打架（否则 pip 会去 PyPI 拉一个覆盖本地源码的 ok-script）。
+      - name: 准备发布用依赖清单
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag }}
+        run: python -m ok.update.inline_ok_requirements --tag "$env:RELEASE_TAG"
+
+      # 打包前自检：地址是否配置、profile 绑定是否一致。
+      # 这一步失败意味着打出来的包装完会去拉一个不存在的仓库，必须拦下。
+      - name: 校验发布配置
+        run: python tools/check_release.py --tag "${{ github.event.inputs.tag }}"
+
+      - name: 构建安装包
+        id: pyappify
+        uses: ok-oldking/pyappify-action@69bf7ae364e8c7f0606f34df86d432168a46f4bf
+        with:
+          version: ${{ env.PYAPPIFY_VERSION }}
+          build_setup: true        # 产出 setup.exe（离线安装器，内置 Python 与依赖）
+          add_version_name: true   # 文件名带版本号，多版本并存时不会互相覆盖
+          package_zip: true        # 同时产出绿色版压缩包
+          package_zip_format: zip  # 用 zip 而非 7z：Windows 11 之前也能直接解压
+
+      - name: 列出产物
+        shell: pwsh
+        run: |
+          Get-ChildItem pyappify_dist | Format-Table Name, @{N='MB';E={[math]::Round($_.Length/1MB,1)}}
+          # 一个安装包都没有 = 打包静默失败，早报出来比上传空目录好
+          if (-not (Get-ChildItem -Path pyappify_dist -Filter *.exe -ErrorAction SilentlyContinue)) {
+            Write-Error "pyappify_dist 里没有任何 .exe，打包失败"
+            exit 1
+          }
+
+      - name: 上传到 Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if (-not (gh release view "$env:TAG" 2>$null)) {
+            Write-Error "Release $env:TAG 不存在，先发版再挂安装包"
+            exit 1
+          }
+          # --clobber：允许重跑覆盖同名附件（重试打包不该因「附件已存在」失败）
+          gh release upload "$env:TAG" (Get-ChildItem pyappify_dist -File | ForEach-Object FullName) --clobber
+
+      - name: 输出下载地址
+        shell: pwsh
+        env:
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          Write-Host "发布页：${{ github.server_url }}/${{ github.repository }}/releases/tag/$env:TAG"
+          Get-ChildItem pyappify_dist -Filter *.exe | ForEach-Object {
+            Write-Host "直链：${{ github.server_url }}/${{ github.repository }}/releases/download/$env:TAG/$($_.Name)"
+          }

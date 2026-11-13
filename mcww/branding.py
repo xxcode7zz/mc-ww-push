@@ -84,6 +84,32 @@ SKILL_FAILED_TEMPLATE = "Click skill failed, check if the keybinding is correct 
 
 # ---------------------------------------------------------------- config 改写
 
+_VERSION_LINE_RE = None
+
+
+def _packaged_version():
+    """从仓库根 ``config.py`` 读出版本号字面值，读不到就返回空串。
+
+    为什么不直接 ``from config import version``：``config.py`` 正是本函数的
+    调用方（它 import 了 apply_brand），直接 import 会形成循环。这里改成
+    读源码文本 —— 只认 ``version = "..."`` 这一种形状，与打包脚本
+    ``ok.update.inline_ok_requirements`` 改写的那行完全对应。
+
+    这样打包产物里 config.py 被写成 tag 值、而 branding.py 里的
+    APP_VERSION 还是源码默认值时，运行时仍能显示正确版本号。
+    """
+    global _VERSION_LINE_RE
+    import re
+
+    if _VERSION_LINE_RE is None:
+        _VERSION_LINE_RE = re.compile(r'^version\s*=\s*"([^"]+)"', re.MULTILINE)
+    try:
+        source = (APP_ROOT / "config.py").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    match = _VERSION_LINE_RE.search(source)
+    return match.group(1) if match else ""
+
 
 def apply_brand(upstream_config: dict) -> dict:
     """把上游 config 就地改成 MC-WW 的配置并返回它。"""
@@ -95,6 +121,17 @@ def apply_brand(upstream_config: dict) -> dict:
     config["gui_icon"] = ICON_PATH
     config["app_name"] = APP_NAME
     config["app_id"] = APP_ID
+
+    # --- 版本号 ---
+    # 上游把 version 写在 upstream_config.py 的模块级变量里，config["version"]
+    # 直接引用它 —— 所以不覆盖的话，关于页与更新检查显示的会是上游版本
+    # （v3.8.0），用户会以为自己装的是 ok-ww。
+    #
+    # 取值的优先级：config.py 里的 ``version``（打包时被 inline_ok_requirements
+    # 改写成 tag 值）> APP_VERSION（源码里的默认值）。
+    # 两者平时相等；只有打包产物里 config.py 被改过而本文件没被改，
+    # 所以运行时必须以 config.py 为准，否则安装包里显示的仍是旧版本号。
+    config["version"] = _packaged_version() or APP_VERSION
 
     # --- 日志改名，避免与 ok-ww 同时运行抢同一个文件 ---
     config["log_file"] = f"logs/{APP_ID}.log"

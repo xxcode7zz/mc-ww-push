@@ -1,0 +1,16 @@
+src
+ok
+pyappify
+mcww
+config.py
+upstream_config.py
+main.py
+main_debug.py
+assets
+icons
+i18n
+readme
+README.md
+requirements.txt
+pyappify.yml
+LICENSE.txt
