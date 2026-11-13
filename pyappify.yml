@@ -20,7 +20,7 @@ keep_releases: 30
 # ----------------------------------------------------------------------------
 profiles:
   - name: "China"
-    git_url: ""
+    git_url: "https://github.com/xxcode7zz/mc-ww-push.git"
     admin: true
     main_script: "main.py"
     requires_python: "3.12"
@@ -31,6 +31,6 @@ profiles:
     # PYTHONPATH: "your/default/path" # Optional, will be "" if missing
 
   - name: "Global"
-    git_url: ""
+    git_url: "https://github.com/xxcode7zz/mc-ww-push.git"
     main_script: "main.py"
     requirements: "requirements.txt"

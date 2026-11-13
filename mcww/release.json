@@ -6,7 +6,7 @@
         "通道分工：China profile 走 cnb_url（国内优先），Global profile 走 github_url（海外保底）。",
         "留空表示「还没建仓库」：程序照常本地运行，但打包前必须填好，否则安装包会去拉一个不存在的仓库。"
     ],
-    "github_url": "",
+    "github_url": "https://github.com/xxcode7zz/mc-ww-push.git",
     "cnb_url": "",
     "char_code_url": "",
     "homepage": ""
