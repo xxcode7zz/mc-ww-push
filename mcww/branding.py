@@ -303,6 +303,71 @@ def _patch_pyappify_self_update():
     _state["self_update_patched"] = True
 
 
+def _patch_char_factory_team_classes():
+    """把上游移掉的 ``apply_team_char_classes`` 补回 ``CharFactory``。
+
+    上游 v3.8.5 重构 ``CharFactory`` 时删掉了这个函数，但 ``src/gui/
+    CharacterCodeTab.py`` 仍然 ``from src.char.CharFactory import
+    apply_team_char_classes``。同步是整体替换目录，于是出现「页面还在、依赖
+    没了」的错配 —— 角色代码页直接 import 失败，MC-WW 的角色代码功能整块消失。
+
+    函数体沿用上游删除前的实现，所依赖的 ``normalize_team`` /
+    ``load_team_char_class`` 仍在 ``src.char.CustomCharLoader`` 里且签名未变。
+    一旦上游把这些也改了，这里会打一条警告并跳过，不影响启动。
+    """
+    try:
+        from src.char import CharFactory
+    except Exception as error:
+        _warn(f"跳过 CharFactory 补丁: {error}")
+        return
+    if hasattr(CharFactory, "apply_team_char_classes"):
+        return  # 上游又补回来了，用上游的
+
+    try:
+        from src.char.CustomCharLoader import load_team_char_class, normalize_team
+    except Exception as error:
+        _warn(f"跳过 CharFactory 补丁，CustomCharLoader 不可用: {error}")
+        return
+
+    char_dict = getattr(CharFactory, "char_dict", None)
+    if not isinstance(char_dict, dict):
+        _warn("跳过 CharFactory 补丁，char_dict 不可用")
+        return
+
+    def apply_team_char_classes(task, chars):
+        """仅在三人队伍完整判定后应用自定义角色代码。"""
+        if len(chars) != 3 or any(char is None for char in chars):
+            return chars
+        infos = [char_dict.get(char.char_name) for char in chars]
+        if any(info is None for info in infos):
+            return chars
+        builtin_classes = [info["cls"] for info in infos]
+        try:
+            team = normalize_team(builtin_classes)
+        except ValueError:
+            return chars
+        for index, (char, builtin_cls) in enumerate(zip(chars, builtin_classes)):
+            desired_cls = load_team_char_class(builtin_cls, team)
+            if type(char) is desired_cls:
+                continue
+            replacement = desired_cls(
+                task,
+                char.index,
+                char_name=char.char_name,
+                confidence=char.confidence,
+                ring_index=char.ring_index,
+                char_type=char.char_type,
+                buff_time=char.buff_time,
+            )
+            replacement.__dict__.update(char.__dict__)
+            chars[index] = replacement
+        return chars
+
+    apply_team_char_classes._mcww_compat = True
+    CharFactory.apply_team_char_classes = apply_team_char_classes
+    logger.info("已为 CharFactory 补回 apply_team_char_classes（上游 v3.8.5 移除）")
+
+
 # 补丁的幂等状态。用模块级字典而不是往函数/staticmethod 上挂属性，
 # 避免上面说的「标记挂错对象」问题。
 _state = {}
@@ -310,6 +375,9 @@ _state = {}
 
 _PATCHES = (
     _patch_skill_failed_message,
+    # 必须排在 _patch_character_code_links 之前：后者要 import 角色代码页，
+    # 而那个页面依赖这里补回的函数。
+    _patch_char_factory_team_classes,
     _patch_character_code_links,
     _patch_about_projects,
     _patch_pyappify_self_update,

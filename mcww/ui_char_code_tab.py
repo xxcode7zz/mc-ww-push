@@ -92,7 +92,10 @@ else:
                         "the log attached."),
                 "secondary", body, word_wrap=True))
 
-            button = Button(self.tr("Open Upstream Sync"), icon="sync", variant="primary", parent=body)
+            # 图标必须取自 ``ok.ui.qt.kit.icons`` 的白名单。取不到会抛 KeyError，
+            # 而主窗口在构造 custom tab 时没有异常保护 —— 一个图标名写错就会让
+            # 整个程序起不来，降级页也就失去了兜底的意义。
+            button = Button(self.tr("Open Upstream Sync"), icon="refresh", variant="primary", parent=body)
             button.clicked.connect(self._goto_sync_tab)
             layout.addWidget(button)
             return body
