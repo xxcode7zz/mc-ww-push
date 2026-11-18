@@ -116,6 +116,23 @@ class StartController:
             logger.info(f"enabled task {task}")
         communicate.task.emit(task)
 
+    def _resolve_task(self, task):
+        """Map a 0-based one-time task index to its task object.
+
+        CLI callers (``-t``/``-e``) pass an index. Pending entries are matched by
+        task identity, so an index has to be resolved before it is tracked there,
+        otherwise the launch would drop the request it was started for.
+        """
+        if not isinstance(task, int):
+            return task
+        executor = getattr(og, 'executor', None)
+        tasks = getattr(executor, 'onetime_tasks', None)
+        try:
+            return tasks[task]
+        except (IndexError, TypeError):
+            # An invalid index is reported by _do_start the same way as before.
+            return task
+
     def start(self, task=None, exit_after=False):
         """Launch the game if needed, then run ``task``.
 
@@ -123,18 +140,24 @@ class StartController:
         reports it and :meth:`cancel_task` drops it.
         """
         self.starting = True
-        self._add_pending(task)
+        pending_task = self._resolve_task(task)
+        self._add_pending(pending_task)
         try:
-            self.handler.post(lambda: self.do_start(task, exit_after, from_queue=True))
+            self.handler.post(lambda: self.do_start(pending_task, exit_after, from_queue=True))
         except Exception:
             self.starting = False
-            self._discard_pending(task)
+            self._discard_pending(pending_task)
             raise
 
     def do_start(self, task=None, exit_after=False, from_queue=False):
         if from_queue and task is not None and not isinstance(task, int) and not self.is_task_pending(task):
             logger.info(f'do_start skipped, {task} was cancelled or already started')
             return False
+        if not from_queue:
+            # Direct callers (headless run_task) skip start(), so track the task here;
+            # otherwise _do_start would treat it as cancelled once the game is up.
+            task = self._resolve_task(task)
+            self._add_pending(task)
         self.starting = True
         self._cancel_requested.clear()
         self.__dict__['_active_task'] = task
@@ -388,7 +411,7 @@ class StartController:
                 None,
             )
 
-    def check_resolution(self):
+    def check_resolution(self, frame=None):
         error = None
         supported_resolution = self.config.get(
             'supported_resolution', {})
@@ -402,7 +425,7 @@ class StartController:
             not is_windows_capture
             or og.global_config.get_config('Basic Options').get('Auto Resize Game Window', True)
         )
-        supported, resolution = og.executor.check_frame_and_resolution(supported_ratio, min_size)
+        supported, resolution = og.executor.check_frame_and_resolution(supported_ratio, min_size, frame=frame)
         if not supported:
             resize_success = False
             if resize_to and is_windows_capture and auto_resize_enabled:
@@ -474,7 +497,9 @@ class StartController:
                 logger.info(f'check_device_error: feature_set is None')
 
             logger.info(f'check_device_error: checking resolution')
-            resolution_error = self.check_resolution()
+            # A static WGC target may not produce another frame. Validate the
+            # successful capture above instead of timing out and reporting 0x0.
+            resolution_error = self.check_resolution(frame=frame)
             if resolution_error:
                 logger.error(f'check_device_error: resolution_error: {resolution_error}')
                 return resolution_error
