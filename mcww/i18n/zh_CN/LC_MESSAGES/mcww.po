@@ -86,8 +86,14 @@ msgstr "本地上游版本：{version}"
 msgid "Synced to upstream {version}"
 msgstr "已同步至上游 {version}"
 
-msgid "Updated paths: {paths}. Restart {app} to apply."
-msgstr "已更新：{paths}。请重启 {app} 生效。"
+msgid "Updated from upstream: {paths}"
+msgstr "上游更新：{paths}"
+
+msgid "Kept locally (removed upstream): {paths}"
+msgstr "本地保留（上游已删除）：{paths}"
+
+msgid "Restart {app} to apply."
+msgstr "请重启 {app} 生效"
 
 msgid "Sync finished — restart {app} to apply"
 msgstr "同步完成，请重启 {app} 生效"
@@ -141,3 +147,18 @@ msgstr ""
 
 msgid "Releases"
 msgstr "发布页"
+
+msgid "Updated: {previous} → {version}"
+msgstr "已更新：{previous} → {version}"
+
+msgid "Nothing to sync — no files differ from upstream. No restart needed."
+msgstr "无需同步 —— 本地文件与上游完全一致，不用重启。"
+
+msgid "Already up to date"
+msgstr "已是最新版本"
+
+msgid "unexpected error, see the log"
+msgstr "发生意外错误，详见日志"
+
+msgid "Local upstream version: {version} (updated from {previous})"
+msgstr "本地上游版本：{version}（已从 {previous} 更新）"

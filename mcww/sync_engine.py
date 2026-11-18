@@ -100,6 +100,28 @@ PROTECTED_PATHS = [
 # icons/ 下只允许替换任务图标，品牌图标单独保护
 BRAND_ICONS = ("icon.png", "icon.ico")
 
+# 上游已删除、但 MC-WW 仍在用的文件。同步是「整目录替换」，上游一删，
+# 本地跟着消失，功能就整块没了（v3.8.5 删角色代码页就是这么把编辑器搞没的）。
+#
+# 这里的路径不会被同步删除；同步后如果本地缺失，会按
+# ``KEEP_LOCAL_STORE`` → 本次备份 → 历史备份 的顺序找回。
+# 加了条目就等于承诺「这个文件由 MC-WW 自己维护」，上游再改也不再跟随。
+KEEP_LOCAL_PATHS = [
+    "src/gui/CharacterCodeTab.py",
+    "src/task/CharacterCodeTask.py",
+    "src/web/character_code/index.js",
+    "src/char/CustomCharLoader.py",
+    "src/task/TacetEliminationTask.py",
+]
+
+# 保留文件的常驻副本目录（位于 ``mcww/`` 这个受保护路径内，同步永远不动它）。
+#
+# 为什么不能只靠 ``backups/``：备份只保留 3 份（``BACKUP_KEEP``），每份都是
+# 同步前的快照。上游删掉文件后，同步 3 次，带这些文件的备份就全被清干净，
+# 之后再想找回就彻底没源了 —— 那时用户看到的是「同步一直成功，功能却越来越
+# 少」，而且永远补不回来。所以必须有一份不受清理影响的常驻副本。
+KEEP_LOCAL_STORE = "mcww/keep_local"
+
 STATE_FILE = "mcww/sync_state.json"
 
 # 备份目录必须落在受保护路径**之外**：受保护路径靠哈希校验，
@@ -308,6 +330,89 @@ def _copy_tree(source: Path, target: Path) -> None:
         shutil.copytree(source, target)
     else:
         shutil.copy2(source, target)
+
+
+def _store_kept_paths(app_dir: Path) -> list:
+    """把 ``KEEP_LOCAL_PATHS`` 的当前内容写进常驻副本目录。
+
+    同步成功后立刻调用，确保常驻副本永远是「最近一次同步后、文件还在时」
+    的版本。返回实际写入的相对路径。
+
+    只增不删：副本里多出来的路径不清理 —— 少一条保留文件只是占几 KB，
+    误删一条却可能再也找不回原文件。
+    """
+    app_dir = Path(app_dir)
+    store_root = app_dir / KEEP_LOCAL_STORE
+    stored = []
+    for rel in KEEP_LOCAL_PATHS:
+        source = app_dir / rel
+        if not source.exists():
+            continue
+        target = store_root / rel
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # 内容一致就不重写，避免每次同步都动受保护目录的时间戳
+            if target.exists() and source.is_file() and _md5(target) == _md5(source):
+                stored.append(rel)
+                continue
+            shutil.copy2(source, target)
+            stored.append(rel)
+        except OSError as error:
+            logger.warning(f"写入保留副本失败 {rel}: {error!r}")
+    if stored:
+        logger.info(f"保留副本已更新 {len(stored)} 个文件 -> {KEEP_LOCAL_STORE}")
+    return stored
+
+
+def _rescue_kept_paths(app_dir: Path, backup_root: Path = None) -> dict:
+    """把 ``KEEP_LOCAL_PATHS`` 里缺失的文件找回来。
+
+    同步是整目录替换，上游删掉的文件本地也会消失，功能跟着没了。
+    按优先级找回：
+
+    1. ``mcww/keep_local/`` 常驻副本 —— 不受备份清理影响，最可靠；
+    2. 本次同步前的备份 —— 最新，但已被替换成上游内容时也救不回来；
+    3. 历史备份（时间倒序）。
+
+    返回 ``{相对路径: 来源}``，只包含真正被找回的。
+    """
+    app_dir = Path(app_dir)
+    rescued = {}
+    missing = [rel for rel in KEEP_LOCAL_PATHS if not (app_dir / rel).exists()]
+    if not missing:
+        return rescued
+
+    candidates = []
+    # 常驻副本优先：它是唯一不会被 _prune_backups 清掉的一份
+    store_root = app_dir / KEEP_LOCAL_STORE
+    if store_root.is_dir():
+        candidates.append(store_root)
+    if backup_root is not None and Path(backup_root).is_dir():
+        candidates.append(Path(backup_root))
+    history_root = app_dir / BACKUP_DIR
+    if history_root.is_dir():
+        candidates.extend(sorted((p for p in history_root.iterdir() if p.is_dir()),
+                                 key=lambda p: p.name, reverse=True))
+
+    for rel in missing:
+        for base in candidates:
+            source = base / rel
+            if not source.exists():
+                continue
+            target = app_dir / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            rescued[rel] = str(base)
+            break
+    if rescued:
+        logger.warning(
+            "上游已删除但本地仍在用，已找回 %d 个文件：%s"
+            % (len(rescued), ", ".join(sorted(rescued)))
+        )
+    still_missing = [rel for rel in missing if rel not in rescued]
+    if still_missing:
+        logger.error(f"以下文件上游已删除、保留副本和备份里也没有，相关功能会缺失：{still_missing}")
+    return rescued
 
 
 def _snapshot_protected(app_dir: Path) -> dict:
@@ -519,13 +624,32 @@ class SyncEngine:
                 "请检查上游是否新增了同名路径。"
             )
 
+        # 7.5) 找回上游已删除、但本地仍在用的文件。
+        # 整目录替换会连带删掉这些文件（v3.8.5 就是这样把角色代码编辑器
+        # 一起删没的），不找回来的话「同步成功」等于悄悄砍掉功能。
+        rescued = _rescue_kept_paths(self.app_dir, backup_root)
+        # 找回的文件**不**并进 changed_paths：两者性质不同，混在一起既会让
+        # 界面重复列同一路径，也没法分别说明（一个是「上游更新了」，
+        # 一个是「上游删了、我们留下了」）。界面按 changed_paths /
+        # rescued_paths 各自成句。
+
+        # 7.6) 刷新常驻副本。放在找回之后：这样即使这次是靠备份救回来的，
+        # 副本里也立刻有了内容，下次备份被清也不怕。
+        _store_kept_paths(self.app_dir)
+
         # 8) 记录状态
         state = load_state(self.app_dir)
+        # 记下本次同步前的上游版本。重启后界面要能显示
+        # 「v3.8.3 → v3.8.5-beta.2」，否则用户只看得到当前版本号，
+        # 没法确认自己这次同步到底有没有把版本升上去。
+        previous_version = state.get("upstream_version", "")
+        state["previous_version"] = previous_version
         state["upstream_version"] = upstream_version
         state["synced_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
         state["source"] = source["name"]
         state["history"].append({
             "version": upstream_version,
+            "previous_version": previous_version,
             "at": state["synced_at"],
             "source": source["name"],
             "paths": changed_paths,
@@ -545,6 +669,7 @@ class SyncEngine:
             "version": upstream_version,
             "source": source["name"],
             "changed_paths": changed_paths,
+            "rescued_paths": list(rescued),
             "backup": str(backup_root) if changed_paths else "",
             "pruned_backups": pruned,
             "protected_ok": True,
