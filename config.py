@@ -29,6 +29,6 @@ config = apply_brand(_upstream_config)
 # 2. 注释里不要出现那个赋值的完整字面形式，否则会连带被替换成版本号。
 #
 # 下面这行的字面形状是打包链路的一部分，改成表达式会让版本号静默失效。
-version = "v1.0.0"
+version = "v1.0.1"
 
 __all__ = ["config", "version"]

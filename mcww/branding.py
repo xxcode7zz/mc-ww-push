@@ -25,7 +25,7 @@ logger = Logger.get_logger(__name__)
 
 APP_NAME = "MC-WW"
 APP_ID = "mc-ww"
-APP_VERSION = "v1.0.0"
+APP_VERSION = "v1.0.1"
 
 # 上游基线（同步引擎以这些仓库为源）
 UPSTREAM_NAME = "ok-ww"

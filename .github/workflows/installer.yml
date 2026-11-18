@@ -17,7 +17,7 @@ on:
       tag:
         description: "要挂安装包的 Release tag（例如 v1.0.0）"
         required: true
-        default: "v1.0.0"
+        default: "v1.0.1"
       profiles:
         description: "打包的 profile（逗号分隔，留空=全部）"
         required: false
